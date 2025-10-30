@@ -67,7 +67,7 @@ async def ban_user(ws, room, username):
     await set_role(ws, room, username, "outcast")
 
 # ---------------- بوت فرعي ----------------
-async def async def start_subbot(name, password, room):
+async def start_subbot(name, password, room):
     SUBBOTS_ACTIVE[name] = (password, room)  # تسجيل البوت الفرعي
     while True:  # حلقة مراقبة مستمرة
         try:
@@ -88,6 +88,57 @@ async def async def start_subbot(name, password, room):
         except Exception as e:
             log(f"[SUBBOT:{name}] ❌ انقطع الاتصال أو خرج من الغرفة: {e}")
             await asyncio.sleep(3)  # إعادة المحاولة بعد 3 ثوانٍ
+
+                # ---------------- الانضمام للغرفة ----------------
+                await ws.send(json.dumps({
+                    "handler": "room_join",
+                    "id": gen_id(),
+                    "name": room
+                }))
+                log(f"[SUBBOT:{name}] ✅ دخل الغرفة {room}")
+
+                # ---------------- حلقة انتظار للحفاظ على الاتصال ----------------
+                while True:
+                    await asyncio.sleep(1)
+
+        except Exception as e:
+            log(f"[SUBBOT:{name}] ❌ انقطع الاتصال: {e}")
+            log(f"[SUBBOT:{name}] ⏳ إعادة المحاولة بعد {reconnect_delay} ثانية...")
+            await asyncio.sleep(reconnect_delay)
+            reconnect_delay = min(reconnect_delay * 2, 60)  # زيادة الوقت تدريجيًا حتى 60 ثانية
+                # ---------------- تسجيل الدخول ----------------
+                await ws.send(json.dumps({
+                    "handler": "login",
+                    "id": gen_id(),
+                    "username": name,
+                    "password": password
+                }))
+
+                login_success = False
+                while not login_success:
+                    raw = await ws.recv()
+                    data = safe_json_load(raw)
+                    if data.get("handler") == "login_event" and data.get("type") == "success":
+                        login_success = True
+                        log(f"[SUBBOT:{name}] ✅ تم تسجيل الدخول بنجاح")
+
+                # ---------------- الانضمام للغرفة ----------------
+                await ws.send(json.dumps({
+                    "handler": "room_join",
+                    "id": gen_id(),
+                    "name": room
+                }))
+                log(f"[SUBBOT:{name}] ✅ دخل الغرفة {room}")
+
+                # ---------------- حلقة انتظار للحفاظ على الاتصال ----------------
+                while True:
+                    await asyncio.sleep(1)
+
+        except Exception as e:
+            log(f"[SUBBOT:{name}] ❌ انقطع الاتصال: {e}")
+            log(f"[SUBBOT:{name}] ⏳ إعادة المحاولة بعد {reconnect_delay} ثانية...")
+            await asyncio.sleep(reconnect_delay)
+            reconnect_delay = min(reconnect_delay * 2, 60)  # زيادة الوقت تدريجيًا حتى 60 ثانية
 # ---------------- قائمة الأوامر ----------------
 COMMAND_LIST = """
 قائمة الأوامر المتاحة:
