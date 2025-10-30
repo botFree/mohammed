@@ -9,7 +9,7 @@ import traceback
 SOCKET_URL = os.environ.get("SOCKET_URL", "wss://chatp.net:5333/server")
 BOT_ID = os.environ.get("BOT_ID", "ۦ˺مــشـــٱعࢪ⃪𓂃⃪ֶ𓏲")
 BOT_PWD = os.environ.get("BOT_PWD", "semba22")
-ROOM_NAME = os.environ.get("ROOM_NAME", "sugar-pvt,مشاعر")
+ROOM_NAME = os.environ.get("ROOM_NAME", "مشاعر")
 BOT_MASTERS = os.environ.get("BOT_MASTERS", "سـُـڪـٖـࢪ,឵឵١").split(",")
 
 AUTO_REPLY = "الله يجعلك بوت مثلي عشان تحس"
@@ -97,9 +97,8 @@ COMMAND_LIST = """
 7. .اضافة_ماستر <الاسم>
 8. .حذف_ماستر <الاسم>
 9. .الماسترز
-10. .addbot <الاسم> <كلمة_المرور> <الغرفة>
-11. .rps
-12. الرد التلقائي على كلمة "بوت"
+10. .rps
+
 """
 
 # ---------------- معالجة الأوامر ----------------
