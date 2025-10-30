@@ -7,7 +7,7 @@ import traceback
 
 # ================= إعدادات =================
 SOCKET_URL = os.environ.get("SOCKET_URL", "wss://chatp.net:5333/server")
-BOT_ID = os.environ.get("BOT_ID", "yasm_en")
+BOT_ID = os.environ.get("BOT_ID", "in_iraq")
 BOT_PWD = os.environ.get("BOT_PWD", "hmode1995")
 ROOM_NAME = os.environ.get("ROOM_NAME", "sugar-pvt")
 BOT_MASTERS = os.environ.get("BOT_MASTERS", "سـُـڪـٖـࢪ,឵឵١").split(",")
