@@ -9,11 +9,12 @@ import traceback
 SOCKET_URL = os.environ.get("SOCKET_URL", "wss://chatp.net:5333/server")
 BOT_ID = os.environ.get("BOT_ID", "ۦ˺مــشـــٱعࢪ⃪𓂃⃪ֶ𓏲")
 BOT_PWD = os.environ.get("BOT_PWD", "semba22")
-ROOM_NAME = os.environ.get("ROOM_NAME", "مشاعر")
+ROOM_NAME = os.environ.get("ROOM_NAME", "sugar-pvt")
 BOT_MASTERS = os.environ.get("BOT_MASTERS", "سـُـڪـٖـࢪ,឵឵١").split(",")
 
 AUTO_REPLY = "الله يجعلك بوت مثلي عشان تحس"
 RPS_CHOICES = ["حجر", "ورقة", "مقص"]
+BANNED_WORDS = ["كلمة1", "كلمة2"]  # ضع هنا الكلمات الممنوعة للحظر التلقائي
 
 # ---------------- متغيرات التحكم ----------------
 WELCOME_ENABLED = False
@@ -32,6 +33,7 @@ def safe_json_load(s):
 def log(*args):
     print(*args)
 
+# ---------------- أوامر الرسائل ----------------
 async def send_group_text(ws, room, text):
     body = {
         "handler": "room_message",
@@ -83,7 +85,24 @@ async def start_subbot(name, password, room):
     except Exception as e:
         log(f"[SUBBOT:{name}] ❌ خطأ: {e}")
 
-# ---------------- أوامر الماستر ----------------
+# ---------------- قائمة الأوامر ----------------
+COMMAND_LIST = """
+قائمة الأوامر المتاحة:
+1. .ترحيب تشغيل / ايقاف
+2. .حظر <الاسم>
+3. .حظر_تلقائي تشغيل / ايقاف
+4. .عضويه <الاسم>
+5. .مشرف <الاسم>
+6. .اونر <الاسم>
+7. .اضافة_ماستر <الاسم>
+8. .حذف_ماستر <الاسم>
+9. .الماسترز
+10. .addbot <الاسم> <كلمة_المرور> <الغرفة>
+11. .rps
+12. الرد التلقائي على كلمة "بوت"
+"""
+
+# ---------------- معالجة الأوامر ----------------
 async def handle_command(ws, data):
     global WELCOME_ENABLED, AUTO_BAN_ENABLED, BOT_MASTERS
 
@@ -95,106 +114,101 @@ async def handle_command(ws, data):
     if sender == BOT_ID:
         return
 
-    # ----------- أوامر الماستر فقط -----------
-    if sender not in BOT_MASTERS:
-        return
+    # ----------- الحظر التلقائي للكلمات ----------- 
+    if AUTO_BAN_ENABLED:
+        for word in BANNED_WORDS:
+            if word in lower:
+                await ban_user(ws, room, sender)
+                await send_group_text(ws, room, f"🚫 تم حظر {sender} بسبب كلمة ممنوعة.")
+                return
 
-    # تشغيل / إيقاف الترحيب
-    if lower.startswith(".ترحيب"):
-        if "تشغيل" in lower:
-            WELCOME_ENABLED = True
-            await send_group_text(ws, room, "✅ تم تشغيل الترحيب في الغرفة.")
-        elif "ايقاف" in lower:
-            WELCOME_ENABLED = False
-            await send_group_text(ws, room, "⛔ تم إيقاف الترحيب في الغرفة.")
-        return
+    # ----------- أوامر الماستر -----------
+    if sender in BOT_MASTERS:
+        if lower.startswith(".ترحيب"):
+            if "تشغيل" in lower:
+                WELCOME_ENABLED = True
+                await send_group_text(ws, room, "✅ تم تشغيل الترحيب في الغرفة.")
+            elif "ايقاف" in lower:
+                WELCOME_ENABLED = False
+                await send_group_text(ws, room, "⛔ تم إيقاف الترحيب في الغرفة.")
+            return
 
-    # حظر عضو
-    if lower.startswith(".حظر"):
-        parts = msg.split()
-        if len(parts) > 1:
-            user = parts[1]
-            try:
-                await ban_user(ws, room, user)
-                await send_group_text(ws, room, f"🚫 تم حظر {user} فعليًا.")
-            except Exception as e:
-                await send_group_text(ws, room, f"❌ خطأ أثناء محاولة الحظر: {e}")
-        else:
-            await send_group_text(ws, room, "⚠️ استخدم: .حظر <الاسم>")
-        return
+        if lower.startswith(".حظر"):
+            parts = msg.split()
+            if len(parts) > 1:
+                user = parts[1]
+                try:
+                    await ban_user(ws, room, user)
+                    await send_group_text(ws, room, f"🚫 تم حظر {user} فعليًا.")
+                except Exception as e:
+                    await send_group_text(ws, room, f"❌ خطأ أثناء محاولة الحظر: {e}")
+            return
 
-    # تشغيل / إيقاف الحظر التلقائي
-    if lower.startswith(".حظر_تلقائي"):
-        if "تشغيل" in lower:
-            AUTO_BAN_ENABLED = True
-            await send_group_text(ws, room, "✅ تم تشغيل الحظر التلقائي.")
-        elif "ايقاف" in lower:
-            AUTO_BAN_ENABLED = False
-            await send_group_text(ws, room, "⛔ تم إيقاف الحظر التلقائي.")
-        return
+        if lower.startswith(".حظر_تلقائي"):
+            if "تشغيل" in lower:
+                AUTO_BAN_ENABLED = True
+                await send_group_text(ws, room, "✅ تم تشغيل الحظر التلقائي.")
+            elif "ايقاف" in lower:
+                AUTO_BAN_ENABLED = False
+                await send_group_text(ws, room, "⛔ تم إيقاف الحظر التلقائي.")
+            return
 
-    # تعيين رتبة: عضوية / مشرف / أونر
-    if lower.startswith(".عضويه"):
-        parts = msg.split()
-        if len(parts) > 1:
-            target = parts[1]
-            try:
-                await set_role(ws, room, target, "member")
-                await send_group_text(ws, room, f"👤 تم منح {target} رتبة عضوية.")
-            except Exception as e:
-                await send_group_text(ws, room, f"❌ خطأ أثناء منح العضوية: {e}")
-        return
+        if lower.startswith(".عضويه"):
+            parts = msg.split()
+            if len(parts) > 1:
+                target = parts[1]
+                try:
+                    await set_role(ws, room, target, "member")
+                    await send_group_text(ws, room, f"👤 تم منح {target} رتبة عضوية.")
+                except Exception as e:
+                    await send_group_text(ws, room, f"❌ خطأ أثناء منح العضوية: {e}")
+            return
 
-    if lower.startswith(".مشرف"):
-        parts = msg.split()
-        if len(parts) > 1:
-            target = parts[1]
-            try:
-                await set_role(ws, room, target, "mod")
-                await send_group_text(ws, room, f"🛡️ تم ترقية {target} إلى مشرف.")
-            except Exception as e:
-                await send_group_text(ws, room, f"❌ خطأ أثناء الترقية: {e}")
-        return
+        if lower.startswith(".مشرف"):
+            parts = msg.split()
+            if len(parts) > 1:
+                target = parts[1]
+                try:
+                    await set_role(ws, room, target, "mod")
+                    await send_group_text(ws, room, f"🛡️ تم ترقية {target} إلى مشرف.")
+                except Exception as e:
+                    await send_group_text(ws, room, f"❌ خطأ أثناء الترقية: {e}")
+            return
 
-    if lower.startswith(".اونر"):
-        parts = msg.split()
-        if len(parts) > 1:
-            target = parts[1]
-            try:
-                await set_role(ws, room, target, "owner")
-                await send_group_text(ws, room, f"👑 تم منح {target} رتبة أونر.")
-            except Exception as e:
-                await send_group_text(ws, room, f"❌ خطأ أثناء منح الأونر: {e}")
-        return
+        if lower.startswith(".اونر"):
+            parts = msg.split()
+            if len(parts) > 1:
+                target = parts[1]
+                try:
+                    await set_role(ws, room, target, "owner")
+                    await send_group_text(ws, room, f"👑 تم منح {target} رتبة أونر.")
+                except Exception as e:
+                    await send_group_text(ws, room, f"❌ خطأ أثناء منح الأونر: {e}")
+            return
 
-    # إضافة / حذف ماستر
-    if lower.startswith(".اضافة_ماستر"):
-        parts = msg.split()
-        if len(parts) > 1:
-            new_master = parts[1]
-            if new_master not in BOT_MASTERS:
-                BOT_MASTERS.append(new_master)
-                await send_group_text(ws, room, f"✅ تمت إضافة {new_master} إلى قائمة الماسترز.")
-            else:
-                await send_group_text(ws, room, f"⚠️ {new_master} موجود بالفعل في قائمة الماسترز.")
-        return
+        if lower.startswith(".اضافة_ماستر"):
+            parts = msg.split()
+            if len(parts) > 1:
+                new_master = parts[1]
+                if new_master not in BOT_MASTERS:
+                    BOT_MASTERS.append(new_master)
+                    await send_group_text(ws, room, f"✅ تمت إضافة {new_master} إلى قائمة الماسترز.")
+                return
 
-    if lower.startswith(".حذف_ماستر"):
-        parts = msg.split()
-        if len(parts) > 1:
-            master = parts[1]
-            if master in BOT_MASTERS:
-                BOT_MASTERS.remove(master)
-                await send_group_text(ws, room, f"🗑️ تم حذف {master} من قائمة الماسترز.")
-            else:
-                await send_group_text(ws, room, f"⚠️ {master} ليس ضمن قائمة الماسترز.")
-        return
+        if lower.startswith(".حذف_ماستر"):
+            parts = msg.split()
+            if len(parts) > 1:
+                master = parts[1]
+                if master in BOT_MASTERS:
+                    BOT_MASTERS.remove(master)
+                    await send_group_text(ws, room, f"🗑️ تم حذف {master} من قائمة الماسترز.")
+                return
 
-    if lower.startswith(".الماسترز"):
-        await send_group_text(ws, room, "قائمة الماسترز: " + ", ".join(BOT_MASTERS))
-        return
+        if lower.startswith(".الماسترز"):
+            await send_group_text(ws, room, "قائمة الماسترز: " + ", ".join(BOT_MASTERS))
+            return
 
-    # ----------- الأوامر الأصلية -----------
+    # ----------- الأوامر العامة -----------
     if lower.startswith(".addbot"):
         try:
             parts = msg.split()
@@ -207,6 +221,10 @@ async def handle_command(ws, data):
             await send_group_text(ws, room, f"❌ خطأ في الأمر: {e}")
         return
 
+    if lower.startswith(".الاوامر"):
+        await send_group_text(ws, room, COMMAND_LIST)
+        return
+
     if "بوت" in lower:
         await send_group_text(ws, room, AUTO_REPLY)
         return
@@ -215,9 +233,8 @@ async def handle_command(ws, data):
         await send_group_text(ws, room, f"🎮 اختياري: {random.choice(RPS_CHOICES)}")
         return
 
-# ---------------- الترحيب لجميع الأعضاء ----------------
+# ---------------- الترحيب ----------------
 async def welcome_existing_users(ws, room):
-    # طلب قائمة المستخدمين
     await ws.send(json.dumps({
         "handler": "room_users",
         "id": gen_id(),
@@ -231,6 +248,7 @@ async def handle_room_users_response(ws, data):
         for user in users:
             if user != BOT_ID:
                 await send_group_text(ws, room, f" أهلاً وسهلاً {user} نورت")
+
 # ---------------- الحلقة الرئيسية ----------------
 async def start_bot():
     reconnect_delay = 3
@@ -266,7 +284,6 @@ async def start_bot():
                         elif handler == "login_event" and data.get("type") == "success":
                             log("✅ تم تسجيل الدخول بنجاح")
                             await join_room(ws, ROOM_NAME)
-                            # بعد الانضمام، الترحيب بالأعضاء الموجودين مسبقًا
                             await welcome_existing_users(ws, ROOM_NAME)
 
                     except Exception:
