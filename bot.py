@@ -67,24 +67,27 @@ async def ban_user(ws, room, username):
     await set_role(ws, room, username, "outcast")
 
 # ---------------- بوت فرعي ----------------
-async def start_subbot(name, password, room):
-    try:
-        async with websockets.connect(SOCKET_URL, ssl=True, max_size=None) as ws:
-            await login(ws, name, password)
-            login_success = False
-            while not login_success:
-                raw = await ws.recv()
-                data = safe_json_load(raw)
-                if data.get("handler") == "login_event" and data.get("type") == "success":
-                    login_success = True
-                    log(f"[SUBBOT:{name}] ✅ تم تسجيل الدخول بنجاح")
-                    await join_room(ws, room)
-                    log(f"[SUBBOT:{name}] ✅ دخل الغرفة {room}")
-            while True:
-                await asyncio.sleep(1)
-    except Exception as e:
-        log(f"[SUBBOT:{name}] ❌ خطأ: {e}")
-
+async def async def start_subbot(name, password, room):
+    SUBBOTS_ACTIVE[name] = (password, room)  # تسجيل البوت الفرعي
+    while True:  # حلقة مراقبة مستمرة
+        try:
+            async with websockets.connect(SOCKET_URL, ssl=True, max_size=None) as ws:
+                await ws.send(json.dumps({"handler":"login","id":gen_id(),"username":name,"password":password}))
+                login_success = False
+                while not login_success:
+                    raw = await ws.recv()
+                    data = safe_json_load(raw)
+                    if data.get("handler") == "login_event" and data.get("type") == "success":
+                        login_success = True
+                        log(f"[SUBBOT:{name}] ✅ تم تسجيل الدخول بنجاح")
+                        await ws.send(json.dumps({"handler":"room_join","id":gen_id(),"name":room}))
+                        log(f"[SUBBOT:{name}] ✅ دخل الغرفة {room}")
+                # حلقة انتظار للحفاظ على الاتصال
+                while True:
+                    await asyncio.sleep(1)
+        except Exception as e:
+            log(f"[SUBBOT:{name}] ❌ انقطع الاتصال أو خرج من الغرفة: {e}")
+            await asyncio.sleep(3)  # إعادة المحاولة بعد 3 ثوانٍ
 # ---------------- قائمة الأوامر ----------------
 COMMAND_LIST = """
 قائمة الأوامر المتاحة:
